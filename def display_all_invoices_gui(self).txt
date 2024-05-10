@@ -1,0 +1,105 @@
+    def display_all_invoices_gui(self):
+        self.invoice_treeview.delete(*self.invoice_treeview.get_children())
+        if hasattr(self, 'search_invoice_treeview'):
+            self.search_invoice_treeview.delete(*self.search_invoice_treeview.get_children())
+
+        # Replace 'get_all_invoices' with the actual function that retrieves all invoices from the database
+        invoices = get_all_invoices()
+        for invoice in invoices:
+            self.invoice_treeview.insert("", "end", values=invoice)
+
+        def your_copy():
+            item = self.invoice_treeview.selection()[0]
+            invoice_number = self.invoice_treeview.item(item, option='values')[0]
+            root.clipboard_clear()
+            root.clipboard_append(invoice_number)
+
+        popup1 = tk.Menu(self.invoice_treeview, tearoff=0)
+        popup1.add_command(
+            command=your_copy,
+            label="Copy Invoice Number")
+
+        def popup_menu(event):
+            item = self.invoice_treeview.identify_row(event.y)
+            self.invoice_treeview.selection_set(item)
+            popup1.post(event.x_root, event.y_root)
+
+        MAC_OS = False
+        if sys.platform == 'darwin':
+            MAC_OS = True
+        if MAC_OS:
+            self.invoice_treeview.bind('<Button-2>', popup_menu)
+        else:
+            self.invoice_treeview.bind('<Button-3>', popup_menu)
+
+
+    def search_invoice_gui(self):
+        invoice_number = self.invoice_vars["Invoice Number"].get()
+        name = self.invoice_vars["Name"].get()
+        vin = self.invoice_vars["VIN"].get()
+        price = self.invoice_vars["Price"].get()
+        payment_type = self.invoice_vars["Payment Type"].get()
+        date = self.invoice_vars["Date"].get()
+
+        search_criteria = {}
+        if invoice_number:
+            search_criteria["invoice_number"] = invoice_number
+        if name:
+            search_criteria["name"] = name
+        if vin:
+            search_criteria["vin"] = vin
+        if price:
+            search_criteria["price"] = price
+        if payment_type:
+            search_criteria["payment_type"] = payment_type
+        if date:
+            search_criteria["date"] = date
+
+        if not search_criteria:
+            messagebox.showinfo("Search criteria missing", "Please provide at least one search criteria.")
+            return
+
+        query_parts = [f"{field} = ?" for field in search_criteria]
+        query = "SELECT * FROM invoices WHERE " + " AND ".join(query_parts)
+        values = tuple(search_criteria.values())
+
+        cursor.execute(query, values)
+        invoices = cursor.fetchall()
+
+        self.search_invoice_treeview = ttk.Treeview(self.invoice_results_frame, show="headings")
+        self.search_invoice_treeview.grid(row=0, column=0, padx=5, pady=5, sticky="nesw")
+        #self.invoice_treeview = self.search_treeview
+
+        if not invoices:
+            messagebox.showinfo("No Invoices", "No invoices found matching the search criteria.")
+            self.display_all_invoices_gui()
+        else:
+            # Define columns
+            self.search_invoice_treeview['columns'] = ("Invoice #", "Name", "VIN", "Price", "Payment Type", "Date")
+
+            # Format columns
+            for col in self.search_invoice_treeview['columns']:
+                self.search_invoice_treeview.column(col, width=110, anchor="center")
+                self.search_invoice_treeview.heading(col, text=col, anchor="center")
+
+            if hasattr(self, 'search_invoice_treeview'):
+                self.search_invoice_treeview.delete(*self.search_invoice_treeview.get_children())
+            else:
+                self.search_invoice_treeview = ttk.Treeview(self.invoice_results_frame, show="headings")
+                self.search_invoice_treeview.grid(row=0, column=0, padx=5, pady=5, sticky="nesw")
+
+            # Populate search results
+            for invoice in invoices:
+                self.search_invoice_treeview.insert("", "end", values=invoice)
+
+            self.search_invoice_treeview.grid(row=0, column=0, padx=5, pady=5, sticky="nesw")
+        def your_copy():
+            item = self.search_invoice_treeview.selection()[0]
+            invoice_number = self.search_invoice_treeview.item(item, option='values')[0]
+            root.clipboard_clear()
+            root.clipboard_append(invoice_number)
+
+        popup1 = tk.Menu(self.invoice_treeview, tearoff=0)
+        popup1.add_command(
+            command=your_copy,
+            label="Copy Invoice Number")
